@@ -1,4 +1,4 @@
-# aws-highly-available-webapp
+# Aws-Highly-Available-Webapp
 Hands-on AWS cloud infrastructure project demonstrating highly available web architecture using VPC, public/private subnets, bastion hosts, load balancers, Auto Scaling Groups, and EC2 instances.
 
 # Project Goal
@@ -15,7 +15,7 @@ This project focuses on:
 
 The entire learning process is being documented through GitHub, LinkedIn, and X.
 
-# services used
+# Services Used
 - Amazon VPC
 - EC2
 - Auto Scaling Groups
@@ -28,9 +28,9 @@ The entire learning process is being documented through GitHub, LinkedIn, and X.
 - Linux (Ubuntu)
 - Git & GitHub
 
-# architecture overview
+# Architecture Overview
 Initial Architecture Sketch:
-![AWS Architecture](architecture/VPC_Environment_Infastructure.jepg)
+![AWS Architecture](architecture/VPC_Environment_Infastructure.jpeg)
 This architecture demonstrates a highly available AWS environment using:
 
 - Public and private subnets
@@ -42,7 +42,7 @@ This architecture demonstrates a highly available AWS environment using:
 - NAT Gateway
 - Multi-AZ deployment
 
-# lessons learned
+# Lessons Learned
 
 - Public and private subnets are mainly defined by route table behavior.
 - Internet Gateways connect the VPC to the public internet.
