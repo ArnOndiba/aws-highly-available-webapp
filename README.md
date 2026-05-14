@@ -29,6 +29,26 @@ The entire learning process is being documented through GitHub, LinkedIn, and X.
 - Git & GitHub
 
 # architecture overview
+Initial Architecture Sketch:
+![AWS Architecture](architecture/VPC_Environment_Infastructure.jepg)
+This architecture demonstrates a highly available AWS environment using:
 
+- Public and private subnets
+- Bastion host access
+- Load balancer distribution
+- Auto Scaling Groups
+- Private EC2 web servers
+- Internet Gateway
+- NAT Gateway
+- Multi-AZ deployment
 
 # lessons learned
+
+- Public and private subnets are mainly defined by route table behavior.
+- Internet Gateways connect the VPC to the public internet.
+- NAT Gateways allow outbound internet access for private EC2 instances.
+- Private EC2 instances can still serve webpages through a Load Balancer.
+- Bastion hosts provide secure SSH access into private infrastructure.
+- Traffic direction (inbound vs outbound) is very important in AWS networking.
+- Route tables determine where subnet traffic is sent.
+- Load Balancers require healthy registered targets to serve traffic properly. 
