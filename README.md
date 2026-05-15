@@ -68,6 +68,24 @@ The bastion host is placed in a public subnet and acts as a secure entry point i
 ![ASG Configuration](screenshots/networking/asg-configuration.png)
 The Auto Scaling Group manages the private EC2 web servers. It maintains the desired number of instances across private subnets and can automatically replace unhealthy or terminated instances. This helps improve availability and supports scalable infrastructure design.
 
+## Secure SSH Workflow
+
+The bastion host was used as a secure jump server to access EC2 instances located inside private subnets.
+![ASG Configuration](screenshots/networking/bastion-access-workflow-1.png)
+![ASG Configuration](screenshots/networking/bastion-access-workflow-2.png)
+
+Steps performed:
+- SSH from local machine into bastion host
+- Securely copied PEM key into bastion host using SCP
+- Adjusted Linux file permissions using `chmod 400`
+- SSH from bastion host into private EC2 instances using private IP addresses
+
+This validated:
+- private subnet isolation
+- internal VPC communication
+- SSH authentication workflow
+- bastion host architecture
+
 # Lessons Learned
 
 - Public and private subnets are mainly defined by route table behavior.
