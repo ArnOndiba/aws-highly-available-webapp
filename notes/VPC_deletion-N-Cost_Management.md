@@ -211,7 +211,37 @@ Many AWS resources create hidden ENIs:
 which can block VPC deletion.
 
 
-# 9. Final Infrastructure Teardown Understanding
+# 9. VPC Endpoint Dependency Discovery
+
+While troubleshooting VPC deletion failures, an additional hidden dependency was discovered:VPC Endpoint
+
+I investigated VPC Endpoints:
+
+```bash
+aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=vpc-0e3929127bbd35b70" --region us-east-1
+```
+
+Discovered an active S3 Gateway Endpoint:vpce-02c52893809c16132
+
+
+### Important Discovery
+
+VPC Endpoints:
+
+* create dependencies inside a VPC
+* can block VPC deletion
+* may persist even after subnets and gateways are removed
+
+Deleted the VPC Endpoint:
+
+```bash
+aws ec2 delete-vpc-endpoints --vpc-endpoint-ids vpce-02c52893809c16132 --region us-east-1
+```
+
+After removing the endpoint, the VPC deletion process completed successfully.
+
+
+# 10. Final Infrastructure Teardown Understanding
 
 By the end of the session, a much clearer understanding was developed regarding:
 
@@ -221,6 +251,7 @@ By the end of the session, a much clearer understanding was developed regarding:
 * networking relationships
 * lifecycle management
 
+
 ## Important Realization
 
 Cloud engineering is not only about deploying infrastructure, but also maintaining, scaling, troubleshooting, and safely removing infrastructure.
@@ -228,6 +259,7 @@ Cloud engineering is not only about deploying infrastructure, but also maintaini
 
 # Major Lessons Learned During This Session
 
+* AWS infrastructure dependencies are layered and interconnected
 * Stopping EC2 instances does not eliminate all AWS costs
 * NAT Gateways can continue billing silently
 * AWS infrastructure deletion follows dependency order
@@ -235,5 +267,7 @@ Cloud engineering is not only about deploying infrastructure, but also maintaini
 * Internet Gateways operate at VPC level
 * Security groups, ENIs, and subnets can block VPC deletion
 * Main route tables cannot be deleted
+* VPC Endpoints can silently block VPC deletion
 * Cloud cost management is an important engineering skill
 * AWS CLI provides deeper visibility into infrastructure relationships
+* Successful infrastructure teardown requires systematic investigation
