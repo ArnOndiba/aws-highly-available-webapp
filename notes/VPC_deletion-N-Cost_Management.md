@@ -251,10 +251,92 @@ By the end of the session, a much clearer understanding was developed regarding:
 * networking relationships
 * lifecycle management
 
+# 10. NAT Gateway Cost Optimization Discovery
 
-## Important Realization
+While continuing the AWS project, it was discovered that stopping EC2 instances alone does not stop all AWS charges.
 
-Cloud engineering is not only about deploying infrastructure, but also maintaining, scaling, troubleshooting, and safely removing infrastructure.
+Major billing sources investigated:
+
+- NAT Gateways
+- Load Balancers
+- Elastic IPs
+- VPC Endpoints
+
+Important realization:
+
+```text
+NAT Gateways continue billing independently
+of EC2 instance state.
+```
+
+Deleted unused NAT Gateways:
+
+```bash
+aws ec2 delete-nat-gateway --nat-gateway-id <nat-id> --region us-east-1
+```
+
+### Key Learning
+
+Cloud cost optimisation requires reviewing:
+- networking resources
+- managed services
+- hidden dependencies
+
+not only compute infrastructure.
+
+
+# 11. Infrastructure Rebuild & NAT Recreation
+
+Recreated NAT Gateway infrastructure for continued private subnet testing.
+
+Architecture understanding:
+
+Public Subnet
+├── Internet Gateway
+├── NAT Gateway
+├── Application Load Balancer
+
+Private Subnet
+├── Jenkins EC2
+
+
+Important realization:
+
+
+NAT Gateway provides outbound internet access for private subnet instances.
+
+This enabled:
+- package installations
+- Jenkins downloads
+- system updates
+- external repository access
+
+while maintaining private subnet isolation.
+
+
+# 12. Final Infrastructure & Lifecycle Understanding
+
+By the end of the project, several major AWS infrastructure concepts became significantly clearer:
+
+- infrastructure dependency hierarchy
+- ALB traffic forwarding
+- backend application ports
+- Linux services
+- ASG instance ephemerality
+- infrastructure teardown workflows
+- networking cost optimisation
+- public vs private architecture
+
+Major realization:
+
+Cloud engineering is not only about deployment, but also:
+- troubleshooting
+- lifecycle management
+- scalability
+- automation
+- cost optimisation
+- dependency management
+
 
 
 # Major Lessons Learned During This Session

@@ -86,6 +86,85 @@ This validated:
 - SSH authentication workflow
 - bastion host architecture
 
+## Jenkins Integration & Private Application Hosting
+
+To extend the project further, Jenkins was deployed inside a private EC2 instance behind the Application Load Balancer.
+
+This introduced additional concepts involving:
+
+- backend application ports
+- ALB listener routing
+- target groups
+- health checks
+- Linux services
+- private subnet application hosting
+
+### Jenkins Deployment
+
+Jenkins was installed on a private EC2 instance using:
+
+```bash
+sudo apt update
+sudo apt install fontconfig openjdk-21-jre -y
+sudo apt install jenkins -y
+```
+
+The Jenkins service was started and enabled using:
+
+```bash
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+```
+
+Verified Jenkins status:
+
+```bash
+sudo systemctl status jenkins
+```
+
+### Key Realisation
+
+Jenkins runs independently as a Linux systemd service and automatically occupies port `8080`.
+
+
+## Application Load Balancer Listener & Target Group Configuration
+![Jenkins Deployment](screenshots/networking/ALB-Listner-config.png)
+
+I configured the Application Load Balancer to forward traffic from:
+
+
+ALB Listener :80
+↓
+Target Group :8080
+↓
+Private Jenkins Server :8080
+
+
+This allowed browser access through the ALB DNS without exposing the private EC2 instance directly to the internet.
+
+
+### Health Check Configuration
+
+![TargetGroup Configuration](screenshots/networking/Target-group-health_checks.png)
+
+The Jenkins target group health check path was configured as: **/login**
+This ensured the ALB could correctly validate Jenkins health status.
+
+### Port Troubleshooting Discovery
+
+Attempting to run: *python3 -m http.server 8080*
+
+returned: *OSError: [Errno 98] Address already in use*
+
+
+because Jenkins was already running on port *8080*
+
+### Final Result
+
+![Jenkins Deployment](screenshots/networking/Jenkins-Upload.png)
+Successfully deployed and accessed Jenkins through the AWS Application Load Balancer while keeping the Jenkins EC2 instance inside a private subnet architecture.
+
+
 # Lessons Learned
 
 - Public and private subnets are mainly defined by route table behavior.
@@ -95,4 +174,10 @@ This validated:
 - Bastion hosts provide secure SSH access into private infrastructure.
 - Traffic direction (inbound vs outbound) is very important in AWS networking.
 - Route tables determine where subnet traffic is sent.
-- Load Balancers require healthy registered targets to serve traffic properly. 
+- Load Balancers require healthy registered targets to serve traffic properly.
+- Application Load Balancer listeners can forward traffic to different backend ports
+- Jenkins runs independently as a Linux service
+- Health checks are critical for load balancer routing
+- Auto Scaling Group instances are ephemeral and can be replaced at any time
+- Jenkins runs as a Linux service
+- Infrastructure automation becomes important in scalable cloud environments
