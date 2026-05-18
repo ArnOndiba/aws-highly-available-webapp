@@ -400,6 +400,16 @@ aws ec2 delete-nat-gateway --nat-gateway-id <nat-id> --region us-east-1
 
 ### Check Load Balancers
 
+Application Load Balancers create hidden ENIs inside subnets.
+
+These ENIs can:
+
+- prevent subnet deletion
+- prevent security group deletion
+- prevent VPC deletion
+
+until the Load Balancer is fully removed.
+
 ```bash
 aws elbv2 describe-load-balancers --region us-east-1 --query "LoadBalancers[?VpcId=='<vpc-id>'].[LoadBalancerName,State.Code]" --output table
 ```
@@ -541,7 +551,6 @@ aws ec2 delete-vpc --vpc-id <vpc-id> --region us-east-1
 # Final Major Realization
 
 AWS infrastructure deletion is dependency-based.
-
 Successful teardown requires understanding relationships between:
 
 - Auto Scaling Groups
@@ -555,11 +564,13 @@ Successful teardown requires understanding relationships between:
 - VPC Endpoints
 - Subnets
 
-Cloud engineering involves not only deployment, but also:
+This teardown process demonstrated that AWS infrastructure behaves as an interconnected system rather than isolated resources.
+Even after compute instances are removed, networking resources and managed services may continue existing independently.
+Understanding infrastructure relationships is critical for:
 
+- cloud cost management
 - infrastructure lifecycle management
 - dependency troubleshooting
-- cost optimisation
 - teardown automation
 - operational awareness
 
@@ -579,3 +590,15 @@ Cloud engineering involves not only deployment, but also:
 * Cloud cost management is an important engineering skill
 * AWS CLI provides deeper visibility into infrastructure relationships
 * Successful infrastructure teardown requires systematic investigation
+
+# Final Engineering Takeaway
+
+This teardown process demonstrated that AWS infrastructure behaves as an interconnected system rather than isolated resources.
+Even after compute instances are removed, networking resources and managed services may continue existing independently.
+Understanding infrastructure relationships is critical for:
+
+- cloud cost management
+- troubleshooting
+- automation
+- operational reliability
+- infrastructure lifecycle management
