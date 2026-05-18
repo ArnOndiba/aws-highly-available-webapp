@@ -1,4 +1,8 @@
-# AWS Cost Management & Infrastructure Cleanup
+## Connect With Me
+
+- X: https://x.com/0ndiba
+- LinkedIn: https://www.linkedin.com/in/arnold-ondiba/
+- GitHub: https://github.com/ArnOndiba# AWS Cost Management & Infrastructure Cleanup
 
 ## Objective
 
@@ -240,21 +244,9 @@ aws ec2 delete-vpc-endpoints --vpc-endpoint-ids vpce-02c52893809c16132 --region 
 
 After removing the endpoint, the VPC deletion process completed successfully.
 
-
-# 10. Final Infrastructure Teardown Understanding
-
-By the end of the session, a much clearer understanding was developed regarding:
-
-* AWS infrastructure dependencies
-* teardown order
-* hidden billing resources
-* networking relationships
-* lifecycle management
-
 # 10. NAT Gateway Cost Optimization Discovery
 
 While continuing the AWS project, it was discovered that stopping EC2 instances alone does not stop all AWS charges.
-
 Major billing sources investigated:
 
 - NAT Gateways
@@ -336,6 +328,240 @@ Cloud engineering is not only about deployment, but also:
 - automation
 - cost optimisation
 - dependency management
+
+
+# 13. Systematic AWS VPC Teardown Workflow (Dependency-Based Cleanup)
+
+After encountering multiple dependency violations during VPC deletion, a more systematic teardown workflow was developed.
+
+This process minimizes repeated dependency errors and provides a structured cleanup sequence.
+
+---
+
+## Step 1 — Disable Auto Scaling Groups FIRST
+
+Important discovery:
+
+Auto Scaling Groups can automatically recreate EC2 instances even after manual termination.
+During teardown, terminated EC2 instances kept reappearing because the Auto Scaling Group was maintaining desired capacity automatically.
+
+This caused repeated:
+
+- ENI dependencies
+- Security Group dependencies
+- subnet dependencies
+
+until the ASG desired capacity was reduced to 0.
+
+
+Before deleting infrastructure:
+- Identify the Asg you want to delete/update:
+
+```bash
+aws autoscaling describe-auto-scaling-groups --region us-east-1
+```
+
+- Then:
+
+```bash
+aws autoscaling update-auto-scaling-group --auto-scaling-group-name <asg-name> --min-size 0 --max-size 0 --desired-capacity 0 --region us-east-1
+```
+
+Then verify instances terminate:
+
+```bash
+aws ec2 describe-instances --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "Reservations[*].Instances[*].[InstanceId,State.Name]" --output table
+```
+
+
+## Step 2 — Investigate Remaining Infrastructure
+
+### Check EC2 Instances
+ In my case since I ssh into the private Ec2 through the bastion host, which is not controlled by the ASG I had to check for any instances that would be running inside the subnet
+
+```bash
+aws ec2 describe-instances --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "Reservations[*].Instances[*].[InstanceId,State.Name,SubnetId]" --output table
+```
+
+
+### Check NAT Gateways
+
+```bash
+aws ec2 describe-nat-gateways --filter "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "NatGateways[*].[NatGatewayId,State,SubnetId]" --output table
+```
+
+Delete NAT Gateway:
+
+```bash
+aws ec2 delete-nat-gateway --nat-gateway-id <nat-id> --region us-east-1
+```
+
+---
+
+### Check Load Balancers
+
+```bash
+aws elbv2 describe-load-balancers --region us-east-1 --query "LoadBalancers[?VpcId=='<vpc-id>'].[LoadBalancerName,State.Code]" --output table
+```
+
+Delete Load Balancer:
+
+```bash
+aws elbv2 delete-load-balancer --load-balancer-arn <alb-arn> --region us-east-1
+```
+
+
+### Check Elastic IPs
+
+```bash
+aws ec2 describe-addresses --region us-east-1 --query "Addresses[*].[AllocationId,PublicIp,AssociationId,NetworkInterfaceId]" --output table
+```
+
+Release Elastic IP:
+
+```bash 
+aws ec2 release-address --allocation-id <allocation-id> --region us-east-1
+```
+
+
+## Step 3 — Investigate Hidden ENI Dependencies
+
+One major discovery was that many AWS services create hidden ENIs.
+
+Check ENIs:
+
+```bash
+aws ec2 describe-network-interfaces --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "NetworkInterfaces[*].[NetworkInterfaceId,Description,Status,Attachment.InstanceId,SubnetId]" --output table
+```
+
+ENIs may belong to:
+
+- NAT Gateways
+- Load Balancers
+- EC2 instances
+- VPC Endpoints
+
+These ENIs must disappear before subnet deletion succeeds.
+
+
+## Step 4 — Check VPC Endpoints
+
+```bash
+aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1
+```
+
+Delete endpoint:
+
+```bash
+aws ec2 delete-vpc-endpoints --vpc-endpoint-ids <vpce-id> --region us-east-1
+```
+
+---
+
+## Step 5 — Delete Custom Security Groups
+
+Check Security Groups:
+
+```bash
+aws ec2 describe-security-groups --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "SecurityGroups[*].[GroupId,GroupName]" --output table
+```
+
+Delete Security Group:
+
+```bash
+aws ec2 delete-security-group --group-id <sg-id> --region us-east-1
+```
+
+# Important: *Default security groups remain until the VPC itself is deleted.*
+
+
+## Step 6 — Delete Subnets
+
+Check subnets:
+
+```bash
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "Subnets[*].[SubnetId,AvailabilityZone]" --output table
+```
+
+Delete subnet:
+
+```bash
+aws ec2 delete-subnet --subnet-id <subnet-id> --region us-east-1
+```
+
+
+## Step 7 — Delete Custom Route Tables
+
+Check route tables:
+
+```bash
+aws ec2 describe-route-tables --filters "Name=vpc-id,Values=<vpc-id>" --region us-east-1 --query "RouteTables[*].[RouteTableId,Associations[0].Main]" --output table
+```
+
+Delete custom route table:
+
+```bash
+aws ec2 delete-route-table --route-table-id <rtb-id> --region us-east-1
+```
+
+# Important: *Main route tables cannot be deleted manually.*
+
+
+## Step 8 — Detach & Delete Internet Gateway
+
+Check Internet Gateway:
+
+```bash
+aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=<vpc-id>" --region us-east-1
+```
+
+Detach IGW:
+
+```bash
+aws ec2 detach-internet-gateway --internet-gateway-id <igw-id> --vpc-id <vpc-id> --region us-east-1
+```
+
+Delete IGW:
+
+```bash
+aws ec2 delete-internet-gateway --internet-gateway-id <igw-id> --region us-east-1
+```
+
+
+## Step 9 — Delete VPC
+
+Final deletion:
+
+```bash
+aws ec2 delete-vpc --vpc-id <vpc-id> --region us-east-1
+```
+
+
+
+# Final Major Realization
+
+AWS infrastructure deletion is dependency-based.
+
+Successful teardown requires understanding relationships between:
+
+- Auto Scaling Groups
+- EC2 instances
+- ENIs
+- Security Groups
+- NAT Gateways
+- Route Tables
+- Internet Gateways
+- Load Balancers
+- VPC Endpoints
+- Subnets
+
+Cloud engineering involves not only deployment, but also:
+
+- infrastructure lifecycle management
+- dependency troubleshooting
+- cost optimisation
+- teardown automation
+- operational awareness
 
 
 
